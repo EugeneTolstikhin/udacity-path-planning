@@ -114,7 +114,7 @@ int main() {
 
           if (previous_path_x.size() != previous_path_y.size())
           {
-            throw 1;
+            throw 1;  // just in case
           }
 
           int prev_size = previous_path_x.size();
@@ -156,7 +156,7 @@ int main() {
                   too_close_left_ahead = true;
                 }
 
-                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 2)
+                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 3)
                 {
                   too_close_left_behind = true;
                 }
@@ -166,7 +166,7 @@ int main() {
             }
             else
             {
-              too_close_left = true;
+              too_close_left = true;  // Do not allow to turn left anymore
             }
 
             //Check the current lane
@@ -202,7 +202,7 @@ int main() {
                   too_close_right_ahead = true;
                 }
 
-                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 2)
+                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 3)
                 {
                   too_close_right_behind = true;
                 }
@@ -212,54 +212,34 @@ int main() {
             }
             else
             {
-              too_close_right = true;
+              too_close_right = true; // Do not allow to turn right anymore
             }
           }
 
+          // FSM
           if (too_close)
           {
             std::cout << "Too close ahead" << std::endl;
             if (!too_close_left)
             {
-              std::cout << "Can turn left" << std::endl;
+              std::cout << "Turn left" << std::endl;
               --lane;
             }
             else if (!too_close_right)
             {
-              std::cout << "Can turn right" << std::endl;
+              std::cout << "Turn right" << std::endl;
               ++lane;
             }
             else
             {
-              std::cout << "Keep lane and decrease speed. Old speed = " << ref_vel << std::endl;
+              std::cout << "Keep lane and decrease speed" << std::endl;
               ref_vel -= SPEED_CHANGE;
-              std::cout << "New speed = " << ref_vel << std::endl;
             }
           }
           else if (ref_vel < SPEED_LIMIT)
           {
-            std::cout << "Far away ahead" << std::endl;
+            std::cout << "Far away ahead. Increase speed" << std::endl;
             ref_vel += SPEED_CHANGE;
-          }
-
-          if (too_close_left_ahead)
-          {
-            std::cout << "Too close left ahead" << std::endl;
-          }
-
-          if (too_close_left_behind)
-          {
-            std::cout << "Too close left behind" << std::endl;
-          }
-          
-          if (too_close_right_ahead)
-          {
-            std::cout << "Too close right ahead" << std::endl;
-          }
-
-          if (too_close_right_behind)
-          {
-            std::cout << "Too close right behind" << std::endl;
           }
 
           vector<double> ptsx;
@@ -307,7 +287,7 @@ int main() {
 
           if (ptsx.size() != ptsy.size())
           {
-            throw 2;
+            throw 2;  // just in case
           }
 
           for (size_t i = 0; i < ptsx.size(); ++i)
