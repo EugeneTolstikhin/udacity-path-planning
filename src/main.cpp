@@ -8,6 +8,7 @@
 #include "helpers.h"
 #include "json.hpp"
 #include "spline.h"
+#include "HighwayFSM.h"
 
 // for convenience
 using nlohmann::json;
@@ -58,13 +59,9 @@ int main() {
   constexpr size_t AMOUNT_OF_POINTS_WHOLE_PATH = 50;
   constexpr size_t TOO_CLOSE_POINTS = 30;
   constexpr float SPEED_CHANGE = 0.224; //0.224mph = 10m/s
+  constexpr size_t AMOUNT_OF_LANES = 3;
 
-  enum LANE
-  {
-    LEFT,
-    CENTRAL,
-    RIGHT
-  } lane = LANE::CENTRAL;
+  int lane = 1;
   double ref_vel = SPEED_LIMIT;
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
@@ -128,13 +125,51 @@ int main() {
           }
 
           bool too_close = false;
+          bool too_close_left = false;
+          bool too_close_right = false;
+
+          bool too_close_left_ahead = false;
+          bool too_close_left_behind = false;
+
+          bool too_close_right_ahead = false;
+          bool too_close_right_behind = false;
 
           //find ref_v to use
           for (size_t i = 0; i < sensor_fusion.size(); ++i)
           {
             float d = sensor_fusion.at(i).at(6);
 
-            //Check the middle lane
+            if (lane > 0)
+            {
+              //Check the left lane
+              if ((LANE_WIDTH / 2 + LANE_WIDTH * (lane - 1) - LANE_WIDTH / 2) < d && d < (LANE_WIDTH / 2 + LANE_WIDTH * (lane - 1) + LANE_WIDTH / 2))
+              {
+                double vx = sensor_fusion.at(i).at(3);
+                double vy = sensor_fusion.at(i).at(4);
+                double check_speed = std::sqrt(std::pow(vx, 2) + std::pow(vy, 2));
+                double check_car_s = sensor_fusion.at(i).at(5);
+
+                check_car_s += SIMULATOR_FREQUENCY * prev_size * check_speed;
+
+                if (check_car_s > car_s && check_car_s < car_s + TOO_CLOSE_POINTS)
+                {
+                  too_close_left_ahead = true;
+                }
+
+                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 2)
+                {
+                  too_close_left_behind = true;
+                }
+
+                too_close_left = too_close_left_ahead || too_close_left_behind;
+              }
+            }
+            else
+            {
+              too_close_left = true;
+            }
+
+            //Check the current lane
             if ((LANE_WIDTH / 2 + LANE_WIDTH * lane - LANE_WIDTH / 2) < d && d < (LANE_WIDTH / 2 + LANE_WIDTH * lane + LANE_WIDTH / 2))
             {
               double vx = sensor_fusion.at(i).at(3);
@@ -147,22 +182,84 @@ int main() {
               if (check_car_s > car_s && check_car_s - car_s < TOO_CLOSE_POINTS)
               {
                 too_close = true;
-
-                if (lane > LANE::LEFT)
-                {
-                  lane = LANE::LEFT;
-                }
               }
+            }
+
+            if (lane < AMOUNT_OF_LANES - 1)
+            {
+              //Check the right lane
+              if ((LANE_WIDTH / 2 + LANE_WIDTH * (lane + 1) - LANE_WIDTH / 2) < d && d < (LANE_WIDTH / 2 + LANE_WIDTH * (lane + 1) + LANE_WIDTH / 2))
+              {
+                double vx = sensor_fusion.at(i).at(3);
+                double vy = sensor_fusion.at(i).at(4);
+                double check_speed = std::sqrt(std::pow(vx, 2) + std::pow(vy, 2));
+                double check_car_s = sensor_fusion.at(i).at(5);
+
+                check_car_s += SIMULATOR_FREQUENCY * prev_size * check_speed;
+
+                if (check_car_s > car_s && check_car_s < car_s + TOO_CLOSE_POINTS)
+                {
+                  too_close_right_ahead = true;
+                }
+
+                if (check_car_s < car_s && car_s < check_car_s + TOO_CLOSE_POINTS / 2)
+                {
+                  too_close_right_behind = true;
+                }
+
+                too_close_right = too_close_right_ahead || too_close_right_behind;
+              }
+            }
+            else
+            {
+              too_close_right = true;
             }
           }
 
           if (too_close)
           {
-            ref_vel -= SPEED_CHANGE;
+            std::cout << "Too close ahead" << std::endl;
+            if (!too_close_left)
+            {
+              std::cout << "Can turn left" << std::endl;
+              --lane;
+            }
+            else if (!too_close_right)
+            {
+              std::cout << "Can turn right" << std::endl;
+              ++lane;
+            }
+            else
+            {
+              std::cout << "Keep lane and decrease speed. Old speed = " << ref_vel << std::endl;
+              ref_vel -= SPEED_CHANGE;
+              std::cout << "New speed = " << ref_vel << std::endl;
+            }
           }
           else if (ref_vel < SPEED_LIMIT)
           {
+            std::cout << "Far away ahead" << std::endl;
             ref_vel += SPEED_CHANGE;
+          }
+
+          if (too_close_left_ahead)
+          {
+            std::cout << "Too close left ahead" << std::endl;
+          }
+
+          if (too_close_left_behind)
+          {
+            std::cout << "Too close left behind" << std::endl;
+          }
+          
+          if (too_close_right_ahead)
+          {
+            std::cout << "Too close right ahead" << std::endl;
+          }
+
+          if (too_close_right_behind)
+          {
+            std::cout << "Too close right behind" << std::endl;
           }
 
           vector<double> ptsx;
