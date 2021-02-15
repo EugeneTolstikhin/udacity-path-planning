@@ -61,7 +61,7 @@ int main() {
   constexpr size_t AMOUNT_OF_LANES = 3;
 
   int lane = 1;
-  double ref_vel = SPEED_LIMIT;
+  double ref_vel = 0.0;
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy, &lane, &ref_vel]
