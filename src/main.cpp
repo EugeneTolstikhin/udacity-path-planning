@@ -8,7 +8,6 @@
 #include "helpers.h"
 #include "json.hpp"
 #include "spline.h"
-#include "HighwayFSM.h"
 
 // for convenience
 using nlohmann::json;
